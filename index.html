@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TunisFit</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1E5AA8">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#F5F8FC;--card:#fff;--ink:#0F1E3A;--mute:#5B6B85;--line:#DCE4F0;--blue:#1E5AA8;--on:#fff;--red:#C8321F;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1730;--card:#12233F;--ink:#EAF0FA;--mute:#9AABC6;--line:#22365A;--blue:#6AA5FF;--on:#0B1730;--red:#FF7A66}}
+:root[data-theme="dark"]{--bg:#0B1730;--card:#12233F;--ink:#EAF0FA;--mute:#9AABC6;--line:#22365A;--blue:#6AA5FF;--on:#0B1730;--red:#FF7A66}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1{font-size:1.7rem;margin:18px 20px 0;letter-spacing:-.02em;max-width:560px}
+main{padding:8px 20px 96px;max-width:560px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+label{display:block;font-size:.9rem;color:var(--mute);margin:12px 0 4px}
+input,select{width:100%;font:inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button{font:inherit;cursor:pointer}
+.btn{width:100%;margin-top:16px;padding:14px;border:0;border-radius:14px;background:var(--blue);color:var(--on);font-weight:700}
+.big{font-size:3.6rem;font-weight:800;line-height:1;color:var(--blue);letter-spacing:-.03em}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.mac{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.mac div{background:var(--bg);border-radius:12px;padding:10px;text-align:center;font-size:.85rem;color:var(--mute)}
+.mac b{display:block;font-size:1.2rem;color:var(--ink)}
+.mute{color:var(--mute)}
+.pr{padding:12px 0;border-bottom:1px solid var(--line)}.pr:last-child{border:0}
+.pr.nx{color:var(--blue);font-weight:700}
+.week{display:flex;gap:6px;margin-top:12px}.week i{flex:1;height:34px;border-radius:8px;background:var(--bg);border:1px solid var(--line)}.week i.d{background:var(--blue);border-color:var(--blue)}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;padding:14px 4px;border:0;background:none;color:var(--mute);font-weight:600}
+nav button.on{color:var(--blue);box-shadow:inset 0 3px 0 var(--blue)}
+details{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:12px 0}summary{cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}details ul,details ol{padding-left:20px;margin:8px 0}details li{margin:4px 0}h3{margin:14px 0 0;font-size:1rem}
+.seg{display:flex;gap:8px;margin:12px 0}.seg button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-weight:600}.seg button.on{background:var(--blue);border-color:var(--blue);color:var(--on)}details details{margin:8px 0;padding:10px 12px;background:var(--bg)}
+#ban{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;padding:16px;background:var(--red);color:#fff;font-weight:700;text-align:center;z-index:9}
+#ban[hidden]{display:none}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="ban" hidden onclick="this.hidden=true"></div>
+<h1>TunisFit</h1>
+<main id="v"></main>
+<nav>
+<button data-t="today" onclick="tab=this.dataset.t;render()">Today</button>
+<button data-t="plan" onclick="tab=this.dataset.t;render()">Plan</button>
+<button data-t="recipes" onclick="tab=this.dataset.t;render()">Recipes</button>
+<button data-t="prayer" onclick="tab=this.dataset.t;render()">Prayer</button>
+</nav>
+<script>
+const $=s=>document.querySelector(s);
+let S={sex:0,act:1,goal:1,city:0,log:{}},tab='today',alarm=false,AC,fired={};
+try{Object.assign(S,JSON.parse(localStorage.getItem('tf')||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem('tf',JSON.stringify(S))}catch(e){}};
+if(!S.pn){S.pn=1+Math.floor(Math.random()*1e6);save()}
+const day=(o=0)=>{const x=new Date();x.setDate(x.getDate()+o);return x.toLocaleDateString('en-CA')};
+const streak=()=>{let n=0,i=S.log[day()]?0:-1;while(S.log[day(i)]){n++;i--}return n};
+function logw(t){S.log[day()]=t;save();render()}
+
+function calc(){
+ const w=+S.w,h=+S.h,a=+S.a;if(!w||!h||!a)return null;
+ const bmr=10*w+6.25*h-5*a+(S.sex==0?5:-161);
+ const k=Math.max(1400,Math.round(bmr*[1.375,1.55,1.725][S.act]+[-400,0,300][S.goal]));
+ const p=Math.round(w*[1.8,1.6,2][S.goal]),f=Math.round(k*.25/9),c=Math.round((k-4*p-9*f)/4);
+ return{k,p,c,f};
+}
+function resHtml(c){
+ if(!c)return'<p class="mute">Enter your weight, height and age to see your daily targets.</p>';
+ return`<div class="card"><div class="mute">Eat about this much each day</div><div class="big">${c.k}<span style="font-size:1.2rem"> kcal</span></div>
+ <div class="mac"><div><b>${c.p} g</b>protein</div><div><b>${c.c} g</b>carbs</div><div><b>${c.f} g</b>fat</div></div>
+ <p class="mute" style="font-size:.85rem;margin:14px 0 0">An estimate, not medical advice. Adjust after 2 to 3 weeks based on how your weight changes.</p></div>`;
+}
+function go(){save();$('#res').innerHTML=resHtml(calc())}
+const sel=(k,o)=>`<select onchange="S.${k}=+this.value;save()">${o.map((t,i)=>`<option value="${i}" ${S[k]==i?'selected':''}>${t}</option>`).join('')}</select>`;
+
+const recipes=[
+['Egg and vegetable scramble','Breakfast',320,19,22,17,['2 eggs','1 tomato','half a bell pepper','half an onion','1 tsp olive oil','1 slice whole-wheat bread','Salt, pepper, cumin'],['Dice the onion, pepper and tomato.','Heat the oil in a pan and cook the onion and pepper for 4 minutes.','Add the tomato and a pinch of cumin, cook 3 minutes until soft.','Beat the eggs, pour them in and stir gently for 2 to 3 minutes.','Serve with the bread.']],
+['Banana date oats','Breakfast',420,16,68,9,['60 g oats','250 ml milk','1 banana','2 dates','Cinnamon'],['Heat the milk in a small pot.','Add the oats and cook on low heat for 5 minutes, stirring.','Slice the banana and chop the dates.','Pour the oats in a bowl, top with banana and dates, sprinkle cinnamon.']],
+['Chicken, rice and zucchini','Lunch',520,45,60,10,['150 g chicken breast','70 g dry rice','1 zucchini','2 garlic cloves','1 tbsp olive oil','Half a lemon','Paprika, salt'],['Boil the rice for about 15 minutes, then drain.','Cut the chicken in pieces and season with paprika, salt and lemon juice.','Cook the chicken in half the oil for 6 to 8 minutes, until no pink remains.','Slice the zucchini and sauté it with the garlic in the rest of the oil for 5 minutes.','Serve everything together.']],
+['Lentil and carrot soup','Lunch or dinner',360,21,50,8,['80 g dry lentils','1 carrot','1 onion','1 tomato','1 tsp olive oil','Cumin, salt, lemon'],['Rinse the lentils.','Dice the onion, carrot and tomato.','Cook the onion and carrot in the oil for 3 minutes.','Add the tomato, lentils, cumin and 600 ml water.','Simmer 25 minutes until the lentils are soft.','Add salt and a squeeze of lemon. Blend part of it if you like it creamy.']],
+['Tuna and chickpea salad','Lunch',430,36,32,17,['1 can tuna in water','100 g cooked chickpeas','1 tomato','Half a cucumber','Parsley','1 tbsp olive oil','Lemon, salt'],['Drain the tuna and chickpeas.','Dice the tomato and cucumber, chop the parsley.','Mix everything in a bowl.','Add the oil, lemon juice and salt, and let it rest 5 minutes.']],
+['Baked fish with potatoes','Dinner',470,32,40,20,['150 g white fish (dorade, merlu) or sardines','200 g potatoes','2 tomatoes','1 tbsp olive oil','2 garlic cloves','Lemon, paprika, salt, parsley'],['Heat the oven to 200 C.','Slice the potatoes thin, toss with half the oil and salt, bake 20 minutes.','Season the fish with crushed garlic, paprika, salt and lemon.','Add the fish and sliced tomatoes to the tray, drizzle the rest of the oil.','Bake 12 to 15 minutes until the fish flakes easily. Sprinkle with parsley.']],
+['Beef and tomato pasta','Dinner',520,34,58,16,['120 g lean minced beef','70 g dry pasta','3 tomatoes','1 onion','2 garlic cloves','1 tsp olive oil','Oregano, salt'],['Boil the pasta following the packet, about 10 minutes, then drain.','Cook the onion in the oil for 3 minutes.','Add the garlic and beef, brown for 6 minutes, breaking it up.','Add chopped tomatoes and oregano, simmer 12 minutes.','Toss with the pasta.']],
+['Yogurt, orange and dates','Snack',225,11,41,4,['200 g plain yogurt','1 orange','2 dates'],['Peel and slice the orange.','Chop the dates.','Spoon both over the yogurt.']],
+['Spinach omelette with bread','Breakfast',290,18,16,17,['2 eggs','A handful of spinach','Half an onion','1 tsp olive oil','1 slice bread','Salt, pepper'],['Chop the onion and spinach.','Cook the onion in the oil for 2 minutes, add the spinach until soft.','Beat the eggs with salt and pepper, pour over, cook 3 minutes and fold.','Serve with the bread.']],
+['Fromage blanc toast with tomato','Breakfast',290,21,41,7,['150 g plain fromage blanc','2 slices bread','1 tomato','1 tsp olive oil','Mint or oregano'],['Toast the bread.','Spread the fromage blanc on the toast.','Top with sliced tomato, oil and mint.']],
+['Peanut butter banana toast','Breakfast',355,12,55,11,['2 slices bread','1 tbsp peanut butter','1 banana','Cinnamon'],['Toast the bread.','Spread the peanut butter.','Add banana slices and cinnamon.']],
+['Boiled eggs, orange and bread','Breakfast',280,15,30,10,['2 eggs','1 orange','1 slice bread'],['Boil the eggs for 9 minutes, cool in cold water and peel.','Serve with the peeled orange and the bread.']],
+['Yogurt oat apple bowl','Breakfast',350,16,55,7,['200 g plain yogurt','40 g oats','1 apple','Cinnamon'],['Grate or dice the apple.','Mix the yogurt, oats and apple in a bowl.','Sprinkle cinnamon and rest 5 minutes so the oats soften.']],
+['Chakchouka','Lunch or dinner',350,18,22,20,['2 eggs','3 tomatoes','1 bell pepper','1 onion','2 garlic cloves','1 tsp olive oil','Cumin, harissa (optional), salt'],['Dice the vegetables and crush the garlic.','Cook the onion and pepper in the oil for 5 minutes.','Add tomatoes, garlic and spices, simmer 10 minutes.','Make two wells, crack in the eggs, cover and cook 4 minutes.']],
+['Lablabi','Lunch or dinner',380,16,52,12,['150 g cooked chickpeas','1 egg','2 garlic cloves','Half a lemon','1 tsp olive oil','1 slice stale bread','Cumin, salt'],['Heat the chickpeas in their water with the garlic and cumin for 10 minutes.','Break the bread into a bowl and ladle the chickpeas and broth over it.','Top with a soft-poached egg, lemon juice and the oil.']],
+['Chorba frik','Lunch or dinner',330,22,34,10,['60 g lamb or beef, diced','40 g frik (green wheat)','2 tomatoes','1 onion','1 tsp olive oil','Coriander, cumin, salt'],['Brown the meat and onion in the oil for 5 minutes.','Add the tomatoes, spices and 600 ml water, simmer 30 minutes.','Add the rinsed frik and cook 20 minutes more. Finish with coriander.']],
+['Couscous with fish','Lunch or dinner',520,32,68,12,['150 g white fish','70 g couscous','1 carrot','1 zucchini','50 g chickpeas','1 tomato','1 tsp olive oil','Cumin, salt'],['Cook the fish and chopped vegetables with tomato, cumin and 400 ml water for 15 minutes.','Steam the couscous with the oil and a little water, fluff with a fork.','Serve the couscous with the fish and vegetables on top.']],
+['Grilled chicken with tunisian salad','Lunch or dinner',420,45,12,22,['150 g chicken breast','Harissa or paprika','1 cucumber','2 tomatoes','1 tbsp olive oil','Lemon, salt'],['Marinate the chicken in harissa, lemon and salt for 15 minutes.','Grill or pan-cook 6 to 8 minutes per side.','Dice the cucumber and tomatoes, dress with oil and lemon, serve alongside.']],
+['Kefta with roasted vegetables','Lunch or dinner',440,30,25,22,['120 g minced beef','1 eggplant','1 pepper','1 onion','1 tsp olive oil','Parsley, cumin, salt'],['Heat the oven to 200 C.','Mix the beef with chopped onion, parsley, cumin and salt, then shape small patties.','Toss the cut vegetables with the oil and roast with the patties for 20 to 25 minutes.']],
+['Tuna and potato salad','Lunch or dinner',410,28,38,15,['1 can tuna','200 g potatoes','1 boiled egg','Parsley','1 tbsp olive oil','Lemon, salt'],['Boil the potatoes for 15 minutes, cool and dice.','Mix with the tuna, chopped egg and parsley.','Dress with oil, lemon and salt.']],
+['Lentils and rice with yogurt','Lunch or dinner',490,23,82,9,['60 g dry lentils','50 g dry rice','1 onion','1 tsp olive oil','100 g plain yogurt','Cumin, salt'],['Cook the lentils in water for 15 minutes.','Add the rice and cook 15 minutes more until both are soft.','Fry the sliced onion in the oil until golden and spread it on top.','Serve with the yogurt.']],
+['Baked chicken with potatoes and carrots','Lunch or dinner',400,32,34,14,['150 g skinless chicken thigh','150 g potatoes','1 carrot','1 tsp olive oil','Garlic, paprika, salt'],['Heat the oven to 200 C.','Cut the vegetables and toss with oil, garlic, paprika and salt.','Add the chicken and bake 35 to 40 minutes until cooked through.']],
+['Apple and almonds','Snack',220,5,26,12,['1 apple','15 almonds'],['Slice the apple.','Eat it with the almonds.']],
+['Boiled egg and cucumber','Snack',90,6,3,5,['1 egg','Half a cucumber','Salt'],['Boil the egg for 9 minutes, cool and peel.','Slice the cucumber and eat together with a pinch of salt.']],
+['Banana milk','Snack',220,9,36,5,['1 banana','250 ml milk'],['Blend the banana with the cold milk until smooth.']],
+['Dates and walnuts','Snack',170,3,22,9,['3 dates','4 walnuts'],['Remove the stones from the dates.','Fill each date with a piece of walnut.']],
+['Roasted chickpeas (leblebi)','Snack',150,8,25,3,['40 g roasted chickpeas','Cumin, salt'],['Toss the chickpeas with cumin and salt.']],
+['Tuna cucumber bites','Snack',80,14,3,1,['Half a can of tuna','Half a cucumber','Lemon'],['Slice the cucumber into rounds.','Top with the tuna and a squeeze of lemon.']],
+['Egg and tomato toast','Breakfast',300,17,30,12,['2 slices bread','1 egg','1 tomato','1 tsp olive oil','Salt, pepper'],['Toast the bread.','Fry the egg in the oil.','Top the toast with sliced tomato and the egg.']],
+['Semolina milk with dates','Breakfast',310,13,56,5,['40 g fine semolina','250 ml milk','2 dates'],['Heat the milk in a pot.','Stir in the semolina and cook 5 minutes until thick.','Top with chopped dates.']],
+['Tuna and tomato sandwich','Breakfast',330,22,38,9,['1 small baguette','Half a can of tuna','1 tomato','Lettuce','Lemon'],['Split the bread.','Mix the tuna with lemon juice.','Fill with the tuna, tomato and lettuce.']],
+['Oat banana pancakes','Breakfast',300,12,45,8,['40 g oats','1 banana','1 egg','Cinnamon'],['Blend or mash the oats, banana and egg into a batter.','Cook spoonfuls in a non-stick pan, 2 minutes per side.','Sprinkle cinnamon.']],
+['Chicken and vegetable soup with pasta','Lunch or dinner',380,32,38,8,['120 g chicken breast','40 g small pasta','1 carrot','1 potato','1 onion','Salt, pepper'],['Simmer the chicken with the onion and carrot in 700 ml water for 20 minutes.','Shred the chicken and add the diced potato and pasta.','Cook 10 minutes, return the chicken and season.']],
+['Stuffed peppers with beef and rice','Lunch or dinner',470,28,52,16,['2 bell peppers','80 g minced beef','40 g rice','1 tomato','1 onion','Parsley, salt'],['Cook the onion, beef, rice and chopped tomato with a little water for 10 minutes.','Cut the tops off the peppers and fill them.','Bake at 200 C for 30 minutes.']],
+['Sardine and tomato pasta','Lunch or dinner',500,30,60,14,['1 can sardines','70 g pasta','2 tomatoes','2 garlic cloves','Parsley, lemon'],['Boil the pasta and drain.','Cook the garlic and chopped tomatoes for 8 minutes.','Add the sardines and parsley, toss with the pasta and lemon.']],
+['Eggplant and chickpea stew','Lunch or dinner',400,15,55,12,['1 eggplant','100 g cooked chickpeas','2 tomatoes','1 onion','1 tsp olive oil','Cumin, salt'],['Dice the vegetables.','Cook the onion and eggplant in the oil for 8 minutes.','Add tomatoes, chickpeas, cumin and a little water, simmer 15 minutes.']],
+['Cauliflower and chicken bake','Lunch or dinner',380,35,20,17,['150 g chicken breast','200 g cauliflower','1 tsp olive oil','30 g grated cheese','Garlic, cumin, lemon'],['Heat the oven to 200 C.','Toss the cauliflower and chicken pieces with oil, garlic and cumin.','Bake 25 minutes, add the cheese for the last 5 minutes.']],
+['Fish and rice in tomato sauce','Lunch or dinner',480,32,55,13,['150 g white fish','70 g rice','2 tomatoes','1 onion','1 tsp olive oil','Paprika, salt'],['Cook the onion and tomatoes with paprika for 10 minutes to make a sauce.','Add the fish and simmer 10 minutes.','Boil the rice and serve together.']],
+['Fromage blanc and cucumber','Snack',70,10,5,1,['100 g plain fromage blanc','Half a cucumber','Mint'],['Dice the cucumber.','Mix with the fromage blanc and mint.']],
+['Peanut butter on bread','Snack',175,6,17,10,['1 slice bread','1 tbsp peanut butter'],['Toast the bread and spread the peanut butter.']],
+['Mixed nuts','Snack',180,6,6,16,['A small handful of almonds, walnuts and hazelnuts'],['Portion a small handful, about 30 g.']],
+['Lben and a date','Snack',130,8,22,2,['250 ml lben (buttermilk)','1 date'],['Serve the lben cold with the date.']]];
+
+const cities=[['Tunis',36.8065,10.1815],['Sfax',34.7406,10.7603],['Sousse',35.8256,10.6084],['Kairouan',35.6781,10.0963],['Bizerte',37.2744,9.8739],['Gabès',33.8815,10.0982]];
+const R=Math.PI/180,sin=x=>Math.sin(x*R),cos=x=>Math.cos(x*R),tan=x=>Math.tan(x*R),fix=(x,n)=>x-n*Math.floor(x/n);
+const hm=h=>{h=fix(h+.5/60,24);return String(Math.floor(h)).padStart(2,'0')+':'+String(Math.floor(h%1*60)).padStart(2,'0')};
+function prayerTimes(d,lat,lng){
+ const tz=1,D=Date.UTC(d.getFullYear(),d.getMonth(),d.getDate(),12-tz)/864e5+2440587.5-2451545;
+ const g=fix(357.529+.98560028*D,360),q=fix(280.459+.98564736*D,360),L=fix(q+1.915*sin(g)+.02*sin(2*g),360),e=23.439-3.6e-7*D;
+ const RA=fix(Math.atan2(cos(e)*sin(L),cos(L))/R,360)/15,dec=Math.asin(sin(e)*sin(L))/R,eq=q/15-RA,noon=12+tz-lng/15-eq;
+ const T=a=>Math.acos((-sin(a)-sin(dec)*sin(lat))/(cos(dec)*cos(lat)))/R/15;
+ const asr=-Math.atan(1/(1+tan(Math.abs(lat-dec))))/R;
+ return[['Fajr',noon-T(18)],['Sunrise',noon-T(.833)],['Dhuhr',noon],['Asr',noon+T(asr)],['Maghrib',noon+T(.833)],['Isha',noon+T(18)]];
+}
+function nextP(){
+ const c=cities[S.city||0],now=Date.now();
+ for(const off of[0,1]){const d=new Date();d.setDate(d.getDate()+off);d.setHours(0,0,0,0);
+  for(const[n,h]of prayerTimes(d,c[1],c[2])){if(n=='Sunrise')continue;const t=d.getTime()+Math.round(h*60)*6e4;if(t>now)return{n,t}}}
+}
+function ring(n){
+ const b=$('#ban');b.textContent="It's time for "+n+". Tap to dismiss.";b.hidden=false;
+ try{const o=AC.createOscillator();o.connect(AC.destination);o.frequency.value=660;o.start();o.stop(AC.currentTime+1.2)}catch(e){}
+ try{navigator.vibrate([400,200,400,200,400])}catch(e){}
+ try{if(Notification.permission=='granted')navigator.serviceWorker.ready.then(g=>g.showNotification('TunisFit',{body:"It's time for "+n,vibrate:[300,150,300]}))}catch(e){}
+}
+function toggleAlarm(){alarm=!alarm;if(alarm){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}try{Notification.requestPermission()}catch(e){}}render()}
+setInterval(()=>{
+ if(alarm){const c=cities[S.city||0],d=new Date();d.setHours(0,0,0,0);
+  prayerTimes(d,c[1],c[2]).forEach(([n,h])=>{if(n=='Sunrise')return;const t=d.getTime()+Math.round(h*60)*6e4,k=day()+n,now=Date.now();
+   if(now>=t&&now-t<9e4&&!fired[k]){fired[k]=1;ring(n)}})}
+ if(tab=='prayer')render();
+},5000);
+
+const isB=r=>r[1]=='Breakfast',isS=r=>r[1]=='Snack',isM=r=>!isB(r)&&!isS(r);
+const MULT=[.5,.75,1,1.25,1.5,1.75,2],sc=r=>MULT.map(m=>[r[2]*m,r[3]*m,r[4]*m,r[5]*m,m]);
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const shuf=(arr,r)=>{const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const pick=(pool,n,r,pv)=>shuf(pool.filter(x=>!pv.includes(x[0])),r).concat(shuf(pool.filter(x=>pv.includes(x[0])),r)).slice(0,n);
+function newPlan(){const T=calc();if(T)S.prev=mealPlan(T).flatMap(d=>d.rs.map(r=>r[0]));S.pn++;save();render()}
+let planCache={};
+function mealPlan(T){
+ const key=JSON.stringify([T,S.pn,S.prev]);if(planCache.k==key)return planCache.v;
+ const G=[T.k,T.p,T.c,T.f],D=[T.k,T.p,Math.max(T.c,30),T.f];
+ const r=rng(S.pn),pv=S.prev||[],B=pick(recipes.filter(isB),7,r,pv),M=pick(recipes.filter(isM),14,r,pv),Sn=pick(recipes.filter(isS),7,r,pv),used=new Set(),days=[];
+ for(let d=0;d<7;d++){
+  const b=B[d%B.length],s=Sn[d%Sn.length],av=M.filter(m=>!used.has(m));let best=null;
+  for(let i=0;i<av.length;i++)for(let j=i+1;j<av.length;j++){
+   const rs=[b,av[i],av[j],s],[S0,S1,S2,S3]=rs.map(sc);
+   for(const A of S0)for(const Bv of S1)for(const C of S2)for(const E of S3){
+    const t0=A[0]+Bv[0]+C[0]+E[0],t1=A[1]+Bv[1]+C[1]+E[1],t2=A[2]+Bv[2]+C[2]+E[2],t3=A[3]+Bv[3]+C[3]+E[3];
+    const err=8*((t0-G[0])/D[0])**2+((t1-G[1])/D[1])**2+((t2-G[2])/D[2])**2+((t3-G[3])/D[3])**2+.03*((A[4]-1)**2+(Bv[4]-1)**2+(C[4]-1)**2+(E[4]-1)**2);
+    if(!best||err<best.err)best={err,rs,m:[A[4],Bv[4],C[4],E[4]],t:[t0,t1,t2,t3]};
+   }}
+  best.rs.slice(1,3).forEach(x=>used.add(x));days.push(best);
+ }
+ planCache={k:key,v:days};return days;
+}
+const body=(r,m)=>`${m?`<p class="mute" style="margin:8px 0 0">Amounts below are for 1 portion. Cook ${m} portion${m==1?'':'s'}.</p>`:''}<h3>Ingredients</h3><ul>${r[6].map(x=>`<li>${x}</li>`).join('')}</ul><h3>Steps</h3><ol>${r[7].map(x=>`<li>${x}</li>`).join('')}</ol>`;
+function planView(){
+ const T=calc();
+ if(!T)return'<div class="card">Enter your weight, height and age in the Plan tab first. Your 7-day meal plan will then appear here.</div>';
+ const L=['Breakfast','Lunch','Dinner','Snack'];
+ return'<p class="mute">Seven days, and no dish is repeated. Portions are set so each day matches your targets as closely as possible.</p><button class="btn" style="margin:0 0 12px" onclick="newPlan()">New plan with different dishes</button>'+mealPlan(T).map((d,i)=>`<details><summary><div class="row"><b>Day ${i+1}</b><span class="mute">${Math.round(d.t[0])} of ${T.k} kcal</span></div><div class="mute">Protein ${Math.round(d.t[1])} g, carbs ${Math.round(d.t[2])} g, fat ${Math.round(d.t[3])} g</div></summary>${d.rs.map((r,x)=>`<details><summary><div class="row"><span>${L[x]}: <b>${r[0]}</b></span><span class="mute">${Math.round(r[2]*d.m[x])} kcal</span></div><div class="mute">${d.m[x]} portion${d.m[x]==1?'':'s'}</div></summary>${body(r,d.m[x])}</details>`).join('')}</details>`).join('')
+ +`<p class="mute" style="font-size:.85rem">Your targets: ${T.k} kcal, ${T.p} g protein, ${T.c} g carbs, ${T.f} g fat. Values are approximate.</p>`;
+}
+function allRecipes(){
+ return recipes.map(r=>`<details><summary><div class="row"><b style="font-size:1.05rem">${r[0]}</b><span class="mute">${r[2]} kcal</span></div><div class="mute">${r[1]}, ${r[3]} g protein</div></summary><div class="mac" style="grid-template-columns:repeat(4,1fr)"><div><b>${r[2]}</b>kcal</div><div><b>${r[3]} g</b>protein</div><div><b>${r[4]} g</b>carbs</div><div><b>${r[5]} g</b>fat</div></div>${body(r,0)}</details>`).join('')
+ +'<p class="mute" style="font-size:.85rem">Values are approximate, per portion.</p>';
+}
+const V={
+today(){
+ const done=S.log[day()],st=streak(),c=calc(),late=new Date().getHours()>=18;
+ let wk='';for(let i=6;i>=0;i--)wk+=`<i class="${S.log[day(-i)]?'d':''}"></i>`;
+ const msg=done?`Nice work: ${done} logged today. Come back tomorrow to keep your streak going.`:late?`You haven't logged a workout today. Even a 20-minute walk counts.`:`Plan your movement for today, then log it here.`;
+ return`<div class="card"><div class="row"><span class="mute">Workout streak</span><b>${st} day${st==1?'':'s'}</b></div><div class="week">${wk}</div></div>
+ <div class="card"><p style="margin:0">${msg}</p>${done?'':`<div class="mac" style="grid-template-columns:repeat(2,1fr)">${['Run','Gym','Walk','Other'].map(t=>`<button class="btn" style="margin:0" onclick="logw('${t}')">${t}</button>`).join('')}</div>`}</div>
+ ${c?`<div class="card row"><span class="mute">Today's target</span><b>${c.k} kcal, ${c.p} g protein</b></div>`:`<div class="card mute">Set up your daily targets in the Plan tab.</div>`}`;
+},
+plan(){
+ return`<div class="card"><label>Weight (kg)</label><input inputmode="decimal" value="${S.w||''}" oninput="S.w=this.value;save()">
+ <label>Height (cm)</label><input inputmode="decimal" value="${S.h||''}" oninput="S.h=this.value;save()">
+ <label>Age</label><input inputmode="numeric" value="${S.a||''}" oninput="S.a=this.value;save()">
+ <label>Sex</label>${sel('sex',['Male','Female'])}
+ <label>Activity</label>${sel('act',['Light, 1 to 3 workouts a week','Moderate, 3 to 5','Very active, 6 or more'])}
+ <label>Goal</label>${sel('goal',['Lose fat','Maintain weight','Build muscle'])}
+ <button class="btn" onclick="go()">Calculate my daily plan</button></div><div id="res">${resHtml(calc())}</div>`;
+},
+recipes(){
+ return`<div class="seg"><button class="${S.rv=='all'?'':'on'}" onclick="S.rv='plan';save();render()">Weekly plan</button><button class="${S.rv=='all'?'on':''}" onclick="S.rv='all';save();render()">All recipes</button></div>`+(S.rv=='all'?allRecipes():planView());
+},
+prayer(){
+ const c=cities[S.city||0],d=new Date(),nx=nextP(),m=nx?Math.max(0,Math.round((nx.t-Date.now())/6e4)):0;
+ const rows=prayerTimes(d,c[1],c[2]).map(([n,h])=>`<div class="pr row ${nx&&nx.n==n?'nx':''}"><span>${n}</span><span>${hm(h)}</span></div>`).join('');
+ return`<div class="card"><label style="margin-top:0">City</label><select onchange="S.city=+this.value;save();render()">${cities.map((x,i)=>`<option value="${i}" ${(S.city||0)==i?'selected':''}>${x[0]}</option>`).join('')}</select></div>
+ <div class="card">${nx?`<div class="mute">Next: ${nx.n}</div><div class="big" style="font-size:2.4rem">${Math.floor(m/60)}h ${m%60}min</div>`:''}<div style="margin-top:12px">${rows}</div></div>
+ <button class="btn" style="margin-top:0" onclick="toggleAlarm()">${alarm?'Turn prayer alarm off':'Turn prayer alarm on'}</button>
+ <p class="mute" style="font-size:.85rem">Times are calculated on your phone (Fajr and Isha at 18°, standard Asr) and can differ by a minute or two from your local timetable. The alarm rings only while this page is open on screen.</p>`;
+}};
+function render(){
+ $('#v').innerHTML=V[tab]();
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
+}
+render();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
