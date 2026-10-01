@@ -8,6 +8,9 @@
 <meta name="theme-color" content="#1E5AA8">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TunisFit">
 <style>
 :root{--bg:#F5F8FC;--card:#fff;--ink:#0F1E3A;--mute:#5B6B85;--line:#DCE4F0;--blue:#1E5AA8;--on:#fff;--red:#C8321F;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1730;--card:#12233F;--ink:#EAF0FA;--mute:#9AABC6;--line:#22365A;--blue:#6AA5FF;--on:#0B1730;--red:#FF7A66}}
@@ -35,6 +38,7 @@ nav button{flex:1;padding:14px 4px;border:0;background:none;color:var(--mute);fo
 nav button.on{color:var(--blue);box-shadow:inset 0 3px 0 var(--blue)}
 details{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:12px 0}summary{cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}details ul,details ol{padding-left:20px;margin:8px 0}details li{margin:4px 0}h3{margin:14px 0 0;font-size:1rem}
 .seg{display:flex;gap:8px;margin:12px 0}.seg button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-weight:600}.seg button.on{background:var(--blue);border-color:var(--blue);color:var(--on)}details details{margin:8px 0;padding:10px 12px;background:var(--bg)}
+.inst ol{padding-left:20px;margin:8px 0 0}.inst .x{margin-top:10px;background:none;border:0;color:var(--mute);text-decoration:underline;padding:4px 0}
 #ban{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;padding:16px;background:var(--red);color:#fff;font-weight:700;text-align:center;z-index:9}
 #ban[hidden]{display:none}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
@@ -43,6 +47,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <body>
 <div id="ban" hidden onclick="this.hidden=true"></div>
 <h1>TunisFit</h1>
+<div id="inst" style="max-width:560px;margin:0 auto;padding:0 20px"></div>
 <main id="v"></main>
 <nav>
 <button data-t="today" onclick="tab=this.dataset.t;render()">Today</button>
@@ -215,11 +220,25 @@ prayer(){
  <button class="btn" style="margin-top:0" onclick="toggleAlarm()">${alarm?'Turn prayer alarm off':'Turn prayer alarm on'}</button>
  <p class="mute" style="font-size:.85rem">Times are calculated on your phone (Fajr and Isha at 18°, standard Asr) and can differ by a minute or two from your local timetable. The alarm rings only while this page is open on screen.</p>`;
 }};
+const ua=navigator.userAgent,isIOS=/iPhone|iPad|iPod/.test(ua)||(navigator.platform=='MacIntel'&&navigator.maxTouchPoints>1);
+const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+let dip;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e;inst()});
+function doInst(){if(dip){dip.prompt();dip=null;inst()}}
+function inst(){
+ const el=$('#inst');let h='';
+ if(standalone||S.hideInst){el.innerHTML='';return}
+ if(dip)h='<b>Install TunisFit</b><div class="mute">Add the app icon to your home screen.</div><button class="btn" onclick="doInst()">Install app</button>';
+ else if(isIOS)h=/FBAN|FBAV|Instagram|Snapchat|TikTok|Line\//.test(ua)?'<b>Open in Safari first</b><div class="mute">Tap the menu of this app and choose Open in Safari. Then add TunisFit to your home screen.</div>':'<b>Install TunisFit on your iPhone</b><ol class="mute"><li>Tap the Share button (a square with an arrow up).</li><li>Scroll down and tap Add to Home Screen.</li><li>Tap Add.</li></ol>';
+ else if(/Android/.test(ua))h='<b>Install TunisFit</b><div class="mute">Tap the three dots at the top right of Chrome, then Install app.</div>';
+ el.innerHTML=h?'<div class="card inst">'+h+'<button class="x" onclick="S.hideInst=1;save();inst()">Hide</button></div>':'';
+}
 function render(){
  $('#v').innerHTML=V[tab]();
  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
 }
 render();
+inst();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
